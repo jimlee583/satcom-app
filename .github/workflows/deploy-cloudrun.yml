@@ -1,0 +1,68 @@
+name: Deploy satcom-app to Cloud Run
+
+on:
+  push:
+    branches:
+      - main   # Deploy when pushing to main
+
+env:
+  PROJECT_ID: satcom-app
+  REGION: us-west4
+  SERVICE_NAME: satcom-app
+  REPOSITORY: satcom-app-repo   # Artifact Registry repo name
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # Needed for Workload Identity Federation
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      # 1) Check out your code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2) Authenticate to Google Cloud using Workload Identity Federation
+      #    This uses the two secrets you created in the repo:
+      #    - GCP_WORKLOAD_IDENTITY_PROVIDER
+      #    - GCP_SERVICE_ACCOUNT_EMAIL
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      # 3) Set up gcloud CLI
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      # 4) Configure Docker to use gcloud credentials for Artifact Registry
+      - name: Configure Docker authentication
+        run: |
+          gcloud auth configure-docker $REGION-docker.pkg.dev
+
+      # 5) Build Docker image
+      - name: Build Docker image
+        run: |
+          IMAGE_URI="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$SERVICE_NAME:${{ github.sha }}"
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          docker build -t "$IMAGE_URI" .
+
+      # 6) Push Docker image to Artifact Registry
+      - name: Push Docker image
+        run: |
+          docker push "$IMAGE_URI"
+
+      # 7) Deploy to Cloud Run (fully managed)
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "$SERVICE_NAME" \
+            --image="$IMAGE_URI" \
+            --region="$REGION" \
+            --platform=managed \
+            --allow-unauthenticated
