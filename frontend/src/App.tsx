@@ -1,8 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import { EarthView } from "./components/EarthView";
 import { RfCniTool } from "./components/RfCniTool";
 
+interface GeoLocation {
+  latitude_deg: number;
+  longitude_deg: number;
+}
+
 const App: React.FC = () => {
+  const [user1Location, setUser1Location] = useState<GeoLocation>({
+    latitude_deg: 40.0,
+    longitude_deg: -105.0,
+  });
+  const [user2Location, setUser2Location] = useState<GeoLocation>({
+    latitude_deg: 35.0,
+    longitude_deg: -80.0,
+  });
+
   return (
     <div
       style={{
@@ -31,8 +45,16 @@ const App: React.FC = () => {
         DVB-S2 MODCOD for ground-to-ground links.
       </p>
 
-      <EarthView />
-      <RfCniTool />
+      <EarthView
+        user1Location={user1Location}
+        user2Location={user2Location}
+      />
+      <RfCniTool
+        user1Location={user1Location}
+        user2Location={user2Location}
+        onUser1LocationChange={setUser1Location}
+        onUser2LocationChange={setUser2Location}
+      />
     </div>
   );
 };

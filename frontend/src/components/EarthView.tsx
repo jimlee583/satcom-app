@@ -1,28 +1,142 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Canvas, useLoader } from "@react-three/fiber";
 import { TextureLoader } from "three";
 import * as THREE from "three";
 
-interface EarthProps {
-  longitudeDeg: number; // GEO orbital longitude, degrees East
-}
+const PRIME_MERIDIAN_OFFSET_DEG = 90; // Geometry seam points ~90°W in default pose
 
 /**
  * Earth sphere with day texture.
  * Rotates so the given longitude is centered in the view.
  */
-const Earth: React.FC<EarthProps> = ({ longitudeDeg }) => {
+const Earth: React.FC = () => {
   const earthTexture = useLoader(TextureLoader, "/earth-day.jpg");
 
-  // Rotate Earth so the given longitude is at the center of the view.
-  // Positive longitude east → rotate sphere by -longitude about Y.
-  const rotationY = -THREE.MathUtils.degToRad(longitudeDeg);
-
   return (
-    <mesh rotation={[0, rotationY, 0]}>
+    <mesh>
       {/* radius 1, good segment count for smooth sphere */}
       <sphereGeometry args={[1, 64, 64]} />
       <meshPhongMaterial map={earthTexture} />
+    </mesh>
+  );
+};
+
+const GRID_RADIUS = 1.01;
+const LAT_STEP_DEG = 15;
+const LON_STEP_DEG = 15;
+const SAMPLE_STEP_DEG = 5;
+const MARKER_SIZE = 0.035;
+const MARKER_RADIUS = GRID_RADIUS + 0.01;
+
+const latLonToCartesian = (
+  latitudeDeg: number,
+  longitudeDeg: number,
+  radius = GRID_RADIUS,
+): [number, number, number] => {
+  const latRad = THREE.MathUtils.degToRad(latitudeDeg);
+  const lonRad = THREE.MathUtils.degToRad(
+    longitudeDeg + PRIME_MERIDIAN_OFFSET_DEG,
+  );
+
+  const x = radius * Math.cos(latRad) * Math.sin(lonRad);
+  const y = radius * Math.sin(latRad);
+  const z = radius * Math.cos(latRad) * Math.cos(lonRad);
+
+  return [x, y, z];
+};
+
+const buildLatitudeGeometry = (latDeg: number) => {
+  const points: THREE.Vector3[] = [];
+  for (let lon = -180; lon <= 180; lon += SAMPLE_STEP_DEG) {
+    const [x, y, z] = latLonToCartesian(latDeg, lon, GRID_RADIUS);
+    points.push(new THREE.Vector3(x, y, z));
+  }
+  return new THREE.BufferGeometry().setFromPoints(points);
+};
+
+const buildLongitudeGeometry = (lonDeg: number) => {
+  const points: THREE.Vector3[] = [];
+  for (let lat = -90; lat <= 90; lat += SAMPLE_STEP_DEG) {
+    const [x, y, z] = latLonToCartesian(lat, lonDeg, GRID_RADIUS);
+    points.push(new THREE.Vector3(x, y, z));
+  }
+  return new THREE.BufferGeometry().setFromPoints(points);
+};
+
+const LatLonGrid: React.FC = () => {
+  const material = useMemo(
+    () =>
+      new THREE.LineBasicMaterial({
+        color: "#555555",
+        transparent: true,
+        opacity: 0.6,
+      }),
+    [],
+  );
+
+  const { latGeometries, lonGeometries } = useMemo(() => {
+    const lats: THREE.BufferGeometry[] = [];
+    for (let lat = -75; lat <= 75; lat += LAT_STEP_DEG) {
+      lats.push(buildLatitudeGeometry(lat));
+    }
+
+    const lons: THREE.BufferGeometry[] = [];
+    for (let lon = -180; lon < 180; lon += LON_STEP_DEG) {
+      lons.push(buildLongitudeGeometry(lon));
+    }
+
+    return { latGeometries: lats, lonGeometries: lons };
+  }, []);
+
+  useEffect(
+    () => () => {
+      latGeometries.forEach((geometry) => geometry.dispose());
+      lonGeometries.forEach((geometry) => geometry.dispose());
+      material.dispose();
+    },
+    [latGeometries, lonGeometries, material],
+  );
+
+  return (
+    <>
+      {latGeometries.map((geometry, idx) => (
+        <lineLoop key={`lat-${idx}`} geometry={geometry} material={material} />
+      ))}
+      {lonGeometries.map((geometry, idx) => (
+        <lineLoop key={`lon-${idx}`} geometry={geometry} material={material} />
+      ))}
+    </>
+  );
+};
+
+interface GeoLocation {
+  latitude_deg: number;
+  longitude_deg: number;
+}
+
+interface EarthViewProps {
+  user1Location: GeoLocation;
+  user2Location: GeoLocation;
+}
+
+const GroundMarker: React.FC<{
+  location: GeoLocation;
+  color: string;
+}> = ({ location, color }) => {
+  const position = useMemo(
+    () =>
+      latLonToCartesian(
+        location.latitude_deg,
+        location.longitude_deg,
+        MARKER_RADIUS,
+      ),
+    [location.latitude_deg, location.longitude_deg],
+  );
+
+  return (
+    <mesh position={position}>
+      <sphereGeometry args={[MARKER_SIZE, 24, 24]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
     </mesh>
   );
 };
@@ -31,8 +145,14 @@ const Earth: React.FC<EarthProps> = ({ longitudeDeg }) => {
  * GEO Earth view with programmatic latitude/longitude grid overlay.
  * The grid is a wireframe sphere slightly larger than the textured Earth.
  */
-export const EarthView: React.FC = () => {
+export const EarthView: React.FC<EarthViewProps> = ({
+  user1Location,
+  user2Location,
+}) => {
   const [longitude, setLongitude] = useState<number>(0); // 0°E at start
+  const rotationY = -THREE.MathUtils.degToRad(
+    longitude + PRIME_MERIDIAN_OFFSET_DEG,
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = Number(e.target.value);
@@ -130,21 +250,17 @@ export const EarthView: React.FC = () => {
             {/* Space background */}
             <color attach="background" args={["black"]} />
 
-            {/* Earth textured sphere */}
-            <Earth longitudeDeg={longitude} />
+            <group rotation={[0, rotationY, 0]}>
+              {/* Earth textured sphere */}
+              <Earth />
 
-            {/* Programmatic latitude/longitude grid overlay
-                A wireframe sphere slightly larger than Earth. */}
-            <mesh>
-              {/* radius 1.01 so the grid sits just above the Earth surface */}
-              <sphereGeometry args={[1.01, 32, 16]} />
-              <meshBasicMaterial
-                wireframe={true}
-                color="#555555"
-                transparent={true}
-                opacity={0.6}
-              />
-            </mesh>
+              {/* Programmatic latitude/longitude grid overlay */}
+              <LatLonGrid />
+
+              {/* Ground terminal markers */}
+              <GroundMarker location={user1Location} color="#ff4d4d" />
+              <GroundMarker location={user2Location} color="#ff9f9f" />
+            </group>
           </Canvas>
         </div>
       </div>

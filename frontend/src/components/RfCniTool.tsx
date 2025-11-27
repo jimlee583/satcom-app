@@ -59,6 +59,13 @@ interface CniResponse {
   suggested_modcod: ModcodInfo | null;
 }
 
+interface RfCniToolProps {
+  user1Location: Location;
+  user2Location: Location;
+  onUser1LocationChange: (location: Location) => void;
+  onUser2LocationChange: (location: Location) => void;
+}
+
 async function computeCni(payload: CniRequest): Promise<CniResponse> {
   const res = await fetch(`${API_BASE_URL}/rf/cni`, {
     method: "POST",
@@ -80,20 +87,21 @@ async function computeCni(payload: CniRequest): Promise<CniResponse> {
   return (await res.json()) as CniResponse;
 }
 
-export const RfCniTool: React.FC = () => {
+export const RfCniTool: React.FC<RfCniToolProps> = ({
+  user1Location,
+  user2Location,
+  onUser1LocationChange,
+  onUser2LocationChange,
+}) => {
   // Geometry (satellite longitude)
   const [satLon, setSatLon] = useState(-80);
 
   // User 1
-  const [u1Lat, setU1Lat] = useState(40.0);
-  const [u1Lon, setU1Lon] = useState(-105.0);
   const [u1Eirp, setU1Eirp] = useState(50.0);
   const [u1Gt, setU1Gt] = useState(20.0);
   const [u1Impl, setU1Impl] = useState(1.0);
 
   // User 2
-  const [u2Lat, setU2Lat] = useState(35.0);
-  const [u2Lon, setU2Lon] = useState(-80.0);
   const [u2Gt, setU2Gt] = useState(20.0);
   const [u2Impl, setU2Impl] = useState(1.0);
 
@@ -156,6 +164,38 @@ export const RfCniTool: React.FC = () => {
     if (preset) applyPresetToUser2(preset);
   };
 
+  const updateUser1Latitude = (value: number) => {
+    if (Number.isNaN(value)) return;
+    onUser1LocationChange({
+      ...user1Location,
+      latitude_deg: value,
+    });
+  };
+
+  const updateUser1Longitude = (value: number) => {
+    if (Number.isNaN(value)) return;
+    onUser1LocationChange({
+      ...user1Location,
+      longitude_deg: value,
+    });
+  };
+
+  const updateUser2Latitude = (value: number) => {
+    if (Number.isNaN(value)) return;
+    onUser2LocationChange({
+      ...user2Location,
+      latitude_deg: value,
+    });
+  };
+
+  const updateUser2Longitude = (value: number) => {
+    if (Number.isNaN(value)) return;
+    onUser2LocationChange({
+      ...user2Location,
+      longitude_deg: value,
+    });
+  };
+
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError(null);
@@ -166,8 +206,8 @@ export const RfCniTool: React.FC = () => {
       const payload: CniRequest = {
         user1: {
           location: {
-            latitude_deg: u1Lat,
-            longitude_deg: u1Lon,
+            latitude_deg: user1Location.latitude_deg,
+            longitude_deg: user1Location.longitude_deg,
           },
           eirp_dbw: u1Eirp,
           gt_dbk: u1Gt,
@@ -175,8 +215,8 @@ export const RfCniTool: React.FC = () => {
         },
         user2: {
           location: {
-            latitude_deg: u2Lat,
-            longitude_deg: u2Lon,
+            latitude_deg: user2Location.latitude_deg,
+            longitude_deg: user2Location.longitude_deg,
           },
           eirp_dbw: 0.0, // user2 not transmitting in this bent-pipe model
           gt_dbk: u2Gt,
@@ -304,8 +344,10 @@ export const RfCniTool: React.FC = () => {
               Lat (deg):
               <input
                 type="number"
-                value={u1Lat}
-                onChange={(e) => setU1Lat(parseFloat(e.target.value))}
+                value={user1Location.latitude_deg}
+                onChange={(e) =>
+                  updateUser1Latitude(parseFloat(e.target.value))
+                }
                 style={inputStyle}
               />
             </label>
@@ -313,8 +355,10 @@ export const RfCniTool: React.FC = () => {
               Lon (deg, East+):
               <input
                 type="number"
-                value={u1Lon}
-                onChange={(e) => setU1Lon(parseFloat(e.target.value))}
+                value={user1Location.longitude_deg}
+                onChange={(e) =>
+                  updateUser1Longitude(parseFloat(e.target.value))
+                }
                 style={inputStyle}
               />
             </label>
@@ -451,8 +495,10 @@ export const RfCniTool: React.FC = () => {
               Lat (deg):
               <input
                 type="number"
-                value={u2Lat}
-                onChange={(e) => setU2Lat(parseFloat(e.target.value))}
+                value={user2Location.latitude_deg}
+                onChange={(e) =>
+                  updateUser2Latitude(parseFloat(e.target.value))
+                }
                 style={inputStyle}
               />
             </label>
@@ -460,8 +506,10 @@ export const RfCniTool: React.FC = () => {
               Lon (deg, East+):
               <input
                 type="number"
-                value={u2Lon}
-                onChange={(e) => setU2Lon(parseFloat(e.target.value))}
+                value={user2Location.longitude_deg}
+                onChange={(e) =>
+                  updateUser2Longitude(parseFloat(e.target.value))
+                }
                 style={inputStyle}
               />
             </label>
