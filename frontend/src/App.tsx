@@ -1,5 +1,6 @@
 import React from "react";
 import { EarthView } from "./components/EarthView";
+import { RfCniTool } from "./components/RfCniTool";
 
 const App: React.FC = () => {
   return (
@@ -16,7 +17,7 @@ const App: React.FC = () => {
       }}
     >
       <h1 style={{ textAlign: "center", marginBottom: "0.5rem" }}>
-        GEO Satellite Earth View
+        GEO Satellite Earth View & RF Link Tool
       </h1>
       <p
         style={{
@@ -26,13 +27,16 @@ const App: React.FC = () => {
           opacity: 0.8,
         }}
       >
-        Visualize what the Earth looks like from different GEO orbital
-        longitudes.
+        Visualize the GEO satellite view and evaluate bent-pipe C/(N+I) and
+        DVB-S2 MODCOD for ground-to-ground links.
       </p>
+
       <EarthView />
+      <RfCniTool />
     </div>
   );
 };
 
 export default App;
+
 
