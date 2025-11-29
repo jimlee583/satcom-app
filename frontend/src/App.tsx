@@ -31,7 +31,7 @@ const App: React.FC = () => {
       }}
     >
       <h1 style={{ textAlign: "center", marginBottom: "0.5rem" }}>
-        GEO Satellite Earth View & RF Link Tool
+        GEO Satellite Earth View & RF Link Tool  
       </h1>
       <p
         style={{
