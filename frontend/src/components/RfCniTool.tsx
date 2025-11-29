@@ -287,11 +287,13 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
     justifyContent: "space-between",
     gap: "0.5rem",
     alignItems: "center",
+    flexWrap: "wrap",
     fontSize: "0.85rem",
   };
 
   const inputStyle: React.CSSProperties = {
-    flex: "0 0 6rem",
+    flex: "0 0 4.5rem",
+    maxWidth: "5rem",
     padding: "0.15rem 0.35rem",
     borderRadius: 4,
     border: "1px solid #4b5563",
@@ -421,17 +423,33 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
           <h3 style={{ marginBottom: "0.5rem", fontSize: "0.95rem" }}>
             Satellite RF & Geometry
           </h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-            <label style={labelStyle}>
-              Satellite longitude (°E):
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+            <label
+              style={{
+                ...labelStyle,
+                flexWrap: "nowrap",
+                gap: "0.25rem",
+              }}
+            >
+              Sat lon (°E):
               <input
                 type="number"
                 value={satLon}
                 onChange={(e) => setSatLon(parseFloat(e.target.value))}
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  flex: "0 0 4rem",
+                  maxWidth: "4.25rem",
+                }}
               />
             </label>
-            <label style={labelStyle}>
+            <label
+              style={{
+                ...labelStyle,
+                flexWrap: "nowrap",
+                gap: "0.25rem",
+              }}
+            >
               Beamwidth (°):
               <input
                 type="number"
@@ -444,83 +462,167 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
                   if (Number.isNaN(val)) return;
                   onBeamwidthChange(val);
                 }}
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  flex: "0 0 4rem",
+                  maxWidth: "4.25rem",
+                }}
               />
             </label>
-            <label style={labelStyle}>
-              Beam center lat (°):
+            <label
+              style={{
+                ...labelStyle,
+                flexWrap: "nowrap",
+                gap: "0.25rem",
+              }}
+            >
+              Beam lat (°):
               <input
                 type="number"
                 value={beamCenter.latitude_deg}
                 onChange={(e) =>
                   updateBeamCenterLatitude(parseFloat(e.target.value))
                 }
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  flex: "0 0 4rem",
+                  maxWidth: "4.25rem",
+                }}
               />
             </label>
-            <label style={labelStyle}>
-              Beam center lon (°E):
+            <label
+              style={{
+                ...labelStyle,
+                flexWrap: "nowrap",
+                gap: "0.25rem",
+              }}
+            >
+              Beam lon (°E):
               <input
                 type="number"
                 value={beamCenter.longitude_deg}
                 onChange={(e) =>
                   updateBeamCenterLongitude(parseFloat(e.target.value))
                 }
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  flex: "0 0 4rem",
+                  maxWidth: "4.25rem",
+                }}
               />
             </label>
-            <label style={labelStyle}>
-              Uplink G/T (dB/K):
+            <label
+              style={{
+                ...labelStyle,
+                flexWrap: "nowrap",
+                gap: "0.25rem",
+              }}
+            >
+              UL G/T (dB/K):
               <input
                 type="number"
                 value={satUplinkGt}
                 onChange={(e) => setSatUplinkGt(parseFloat(e.target.value))}
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  flex: "0 0 4rem",
+                  maxWidth: "4.25rem",
+                }}
               />
             </label>
-            <label style={labelStyle}>
-              Downlink EIRP (dBW):
+            <label
+              style={{
+                ...labelStyle,
+                flexWrap: "nowrap",
+                gap: "0.25rem",
+              }}
+            >
+              DL EIRP (dBW):
               <input
                 type="number"
                 value={satDownlinkEirp}
                 onChange={(e) => setSatDownlinkEirp(parseFloat(e.target.value))}
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  flex: "0 0 4rem",
+                  maxWidth: "4.25rem",
+                }}
               />
             </label>
-            <label style={labelStyle}>
-              Uplink impl. margin (dB):
+            <label
+              style={{
+                ...labelStyle,
+                flexWrap: "nowrap",
+                gap: "0.25rem",
+              }}
+            >
+              UL impl. (dB):
               <input
                 type="number"
                 value={uplinkImpl}
                 onChange={(e) => setUplinkImpl(parseFloat(e.target.value))}
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  flex: "0 0 4rem",
+                  maxWidth: "4.25rem",
+                }}
               />
             </label>
-            <label style={labelStyle}>
-              Downlink impl. margin (dB):
+            <label
+              style={{
+                ...labelStyle,
+                flexWrap: "nowrap",
+                gap: "0.25rem",
+              }}
+            >
+              DL impl. (dB):
               <input
                 type="number"
                 value={downlinkImpl}
                 onChange={(e) => setDownlinkImpl(parseFloat(e.target.value))}
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  flex: "0 0 4rem",
+                  maxWidth: "4.25rem",
+                }}
               />
             </label>
-            <label style={labelStyle}>
-              Uplink intf. margin (dB):
+            <label
+              style={{
+                ...labelStyle,
+                flexWrap: "nowrap",
+                gap: "0.25rem",
+              }}
+            >
+              UL intf. (dB):
               <input
                 type="number"
                 value={uplinkIntMargin}
                 onChange={(e) => setUplinkIntMargin(parseFloat(e.target.value))}
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  flex: "0 0 4rem",
+                  maxWidth: "4.25rem",
+                }}
               />
             </label>
-            <label style={labelStyle}>
-              Downlink intf. margin (dB):
+            <label
+              style={{
+                ...labelStyle,
+                flexWrap: "nowrap",
+                gap: "0.25rem",
+              }}
+            >
+              DL intf. (dB):
               <input
                 type="number"
                 value={downlinkIntMargin}
                 onChange={(e) => setDownlinkIntMargin(parseFloat(e.target.value))}
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  flex: "0 0 4rem",
+                  maxWidth: "4.25rem",
+                }}
               />
             </label>
           </div>

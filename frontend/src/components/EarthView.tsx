@@ -348,7 +348,7 @@ export const EarthView: React.FC<EarthViewProps> = ({
                 border: "1px solid #4b5563",
                 background: "#020617",
                 color: "#e5e7eb",
-                width: "6rem",
+                width: "5rem",
               }}
             />
           </label>
