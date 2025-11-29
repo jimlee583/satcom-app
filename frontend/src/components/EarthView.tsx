@@ -27,6 +27,7 @@ const LON_STEP_DEG = 15;
 const SAMPLE_STEP_DEG = 5;
 const MARKER_SIZE = 0.035;
 const MARKER_RADIUS = GRID_RADIUS + 0.01;
+const BEAM_RADIUS = GRID_RADIUS + 0.02;
 
 const latLonToCartesian = (
   latitudeDeg: number,
@@ -60,6 +61,102 @@ const buildLongitudeGeometry = (lonDeg: number) => {
     const [x, y, z] = latLonToCartesian(lat, lonDeg, GRID_RADIUS);
     points.push(new THREE.Vector3(x, y, z));
   }
+  return new THREE.BufferGeometry().setFromPoints(points);
+};
+
+const buildBeamFootprintGeometry = (
+  satLonDeg: number,
+  centerLatDeg: number,
+  centerLonDeg: number,
+  beamwidthDeg: number,
+): THREE.BufferGeometry | null => {
+  if (!Number.isFinite(beamwidthDeg) || beamwidthDeg <= 0) {
+    return null;
+  }
+
+  // Interpret beamwidth as full antenna pattern angle at the satellite.
+  // Use half-angle as off-boresight angle at GEO altitude, then project
+  // that cone onto the Earth sphere.
+  const halfAngleRad = THREE.MathUtils.degToRad(beamwidthDeg / 2);
+
+  // Normalized radii (Earth radius = 1, GEO radius ~ 6.61)
+  const EARTH_RADIUS = 1;
+  const GEO_RADIUS = 42164 / 6378; // ≈ 6.61
+
+  // Satellite position in ECEF-like coordinates at latitude 0, longitude satLonDeg.
+  const satLonRad = THREE.MathUtils.degToRad(satLonDeg);
+  const satPos = new THREE.Vector3(
+    GEO_RADIUS * Math.cos(0) * Math.sin(satLonRad),
+    0,
+    GEO_RADIUS * Math.cos(0) * Math.cos(satLonRad),
+  );
+
+  // Ground beam center point on Earth's surface.
+  const centerLatRad = THREE.MathUtils.degToRad(centerLatDeg);
+  const centerLonRad = THREE.MathUtils.degToRad(centerLonDeg);
+  const groundCenter = new THREE.Vector3(
+    EARTH_RADIUS * Math.cos(centerLatRad) * Math.sin(centerLonRad),
+    EARTH_RADIUS * Math.sin(centerLatRad),
+    EARTH_RADIUS * Math.cos(centerLatRad) * Math.cos(centerLonRad),
+  );
+
+  // Boresight direction from satellite to ground beam center.
+  const n = groundCenter.clone().sub(satPos).normalize();
+
+  // Build orthonormal basis around boresight axis.
+  const up =
+    Math.abs(n.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+  const e1 = new THREE.Vector3().crossVectors(up, n).normalize();
+  const e2 = new THREE.Vector3().crossVectors(n, e1).normalize();
+
+  const points: THREE.Vector3[] = [];
+
+  for (let bearingDeg = 0; bearingDeg <= 360; bearingDeg += SAMPLE_STEP_DEG) {
+    const bearingRad = THREE.MathUtils.degToRad(bearingDeg);
+
+    const dir = new THREE.Vector3()
+      .copy(n)
+      .multiplyScalar(Math.cos(halfAngleRad))
+      .add(
+        e1
+          .clone()
+          .multiplyScalar(Math.sin(halfAngleRad) * Math.cos(bearingRad)),
+      )
+      .add(
+        e2
+          .clone()
+          .multiplyScalar(Math.sin(halfAngleRad) * Math.sin(bearingRad)),
+      )
+      .normalize();
+
+    // Ray-sphere intersection: |S + t*D|^2 = R^2
+    const a = 1; // |D|^2
+    const b = 2 * satPos.dot(dir);
+    const c = satPos.lengthSq() - EARTH_RADIUS * EARTH_RADIUS;
+    const disc = b * b - 4 * a * c;
+    if (disc < 0) {
+      continue;
+    }
+
+    const t = (-b - Math.sqrt(disc)) / (2 * a); // nearer intersection
+    if (t <= 0) {
+      continue;
+    }
+
+    const hit = satPos.clone().addScaledVector(dir, t);
+
+    // Convert hit point to geodetic lat/lon in the local frame.
+    const r = hit.length();
+    const latRad = Math.asin(hit.y / r);
+    const lonRad = Math.atan2(hit.x, hit.z);
+
+    const latDeg = THREE.MathUtils.radToDeg(latRad);
+    const lonDeg = THREE.MathUtils.radToDeg(lonRad);
+
+    const [x3, y3, z3] = latLonToCartesian(latDeg, lonDeg, BEAM_RADIUS);
+    points.push(new THREE.Vector3(x3, y3, z3));
+  }
+
   return new THREE.BufferGeometry().setFromPoints(points);
 };
 
@@ -117,6 +214,8 @@ interface GeoLocation {
 interface EarthViewProps {
   user1Location: GeoLocation;
   user2Location: GeoLocation;
+  beamCenter: GeoLocation;
+  beamwidthDeg: number;
 }
 
 const GroundMarker: React.FC<{
@@ -141,6 +240,47 @@ const GroundMarker: React.FC<{
   );
 };
 
+const BeamFootprint: React.FC<{
+  satLongitudeDeg: number;
+  centerLatitudeDeg: number;
+  centerLongitudeDeg: number;
+  beamwidthDeg: number;
+}> = ({ satLongitudeDeg, centerLatitudeDeg, centerLongitudeDeg, beamwidthDeg }) => {
+  const geometry = useMemo(
+    () =>
+      buildBeamFootprintGeometry(
+        satLongitudeDeg,
+        centerLatitudeDeg,
+        centerLongitudeDeg,
+        beamwidthDeg,
+      ),
+    [satLongitudeDeg, centerLatitudeDeg, centerLongitudeDeg, beamwidthDeg],
+  );
+
+  const material = useMemo(
+    () =>
+      new THREE.LineBasicMaterial({
+        color: "#ffcc00",
+        transparent: true,
+        opacity: 0.9,
+        linewidth: 2,
+      }),
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      if (geometry) geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
+
+  if (!geometry) return null;
+
+  return <lineLoop geometry={geometry} material={material} />;
+};
+
 /**
  * GEO Earth view with programmatic latitude/longitude grid overlay.
  * The grid is a wireframe sphere slightly larger than the textured Earth.
@@ -148,6 +288,8 @@ const GroundMarker: React.FC<{
 export const EarthView: React.FC<EarthViewProps> = ({
   user1Location,
   user2Location,
+  beamCenter,
+  beamwidthDeg,
 }) => {
   const [longitude, setLongitude] = useState<number>(0); // 0°E at start
   const rotationY = -THREE.MathUtils.degToRad(
@@ -256,6 +398,14 @@ export const EarthView: React.FC<EarthViewProps> = ({
 
               {/* Programmatic latitude/longitude grid overlay */}
               <LatLonGrid />
+
+              {/* Beam footprint from satellite nadir */}
+              <BeamFootprint
+                satLongitudeDeg={longitude}
+                centerLatitudeDeg={beamCenter.latitude_deg}
+                centerLongitudeDeg={beamCenter.longitude_deg}
+                beamwidthDeg={beamwidthDeg}
+              />
 
               {/* Ground terminal markers */}
               <GroundMarker location={user1Location} color="#ff4d4d" />

@@ -64,6 +64,10 @@ interface RfCniToolProps {
   user2Location: Location;
   onUser1LocationChange: (location: Location) => void;
   onUser2LocationChange: (location: Location) => void;
+  beamCenter: Location;
+  onBeamCenterChange: (location: Location) => void;
+  beamwidthDeg: number;
+  onBeamwidthChange: (beamwidth: number) => void;
 }
 
 async function computeCni(payload: CniRequest): Promise<CniResponse> {
@@ -92,6 +96,10 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
   user2Location,
   onUser1LocationChange,
   onUser2LocationChange,
+  beamCenter,
+  onBeamCenterChange,
+  beamwidthDeg,
+  onBeamwidthChange,
 }) => {
   // Geometry (satellite longitude)
   const [satLon, setSatLon] = useState(-80);
@@ -192,6 +200,22 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
     if (Number.isNaN(value)) return;
     onUser2LocationChange({
       ...user2Location,
+      longitude_deg: value,
+    });
+  };
+
+  const updateBeamCenterLatitude = (value: number) => {
+    if (Number.isNaN(value)) return;
+    onBeamCenterChange({
+      ...beamCenter,
+      latitude_deg: value,
+    });
+  };
+
+  const updateBeamCenterLongitude = (value: number) => {
+    if (Number.isNaN(value)) return;
+    onBeamCenterChange({
+      ...beamCenter,
       longitude_deg: value,
     });
   };
@@ -404,6 +428,44 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
                 type="number"
                 value={satLon}
                 onChange={(e) => setSatLon(parseFloat(e.target.value))}
+                style={inputStyle}
+              />
+            </label>
+            <label style={labelStyle}>
+              Beamwidth (°):
+              <input
+                type="number"
+                min={0.1}
+                max={60}
+                step={0.1}
+                value={beamwidthDeg}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  if (Number.isNaN(val)) return;
+                  onBeamwidthChange(val);
+                }}
+                style={inputStyle}
+              />
+            </label>
+            <label style={labelStyle}>
+              Beam center lat (°):
+              <input
+                type="number"
+                value={beamCenter.latitude_deg}
+                onChange={(e) =>
+                  updateBeamCenterLatitude(parseFloat(e.target.value))
+                }
+                style={inputStyle}
+              />
+            </label>
+            <label style={labelStyle}>
+              Beam center lon (°E):
+              <input
+                type="number"
+                value={beamCenter.longitude_deg}
+                onChange={(e) =>
+                  updateBeamCenterLongitude(parseFloat(e.target.value))
+                }
                 style={inputStyle}
               />
             </label>

@@ -16,6 +16,11 @@ const App: React.FC = () => {
     latitude_deg: 35.0,
     longitude_deg: -80.0,
   });
+   const [beamCenter, setBeamCenter] = useState<GeoLocation>({
+     latitude_deg: 0.0,
+     longitude_deg: 0.0,
+   });
+  const [beamwidthDeg, setBeamwidthDeg] = useState<number>(3.0);
 
   return (
     <div
@@ -48,12 +53,18 @@ const App: React.FC = () => {
       <EarthView
         user1Location={user1Location}
         user2Location={user2Location}
+        beamCenter={beamCenter}
+        beamwidthDeg={beamwidthDeg}
       />
       <RfCniTool
         user1Location={user1Location}
         user2Location={user2Location}
         onUser1LocationChange={setUser1Location}
         onUser2LocationChange={setUser2Location}
+        beamCenter={beamCenter}
+        onBeamCenterChange={setBeamCenter}
+        beamwidthDeg={beamwidthDeg}
+        onBeamwidthChange={setBeamwidthDeg}
       />
     </div>
   );
