@@ -13,7 +13,7 @@ interface GroundTerminal {
   location: Location;
   eirp_dbw: number;
   gt_dbk: number;
-  impl_margin_db: number;
+  npr_db: number;
 }
 
 interface LinkGeometry {
@@ -31,8 +31,7 @@ interface SatelliteRF {
   downlink_eirp_dbw: number;
   uplink_impl_margin_db: number;
   downlink_impl_margin_db: number;
-  uplink_interference_margin_db: number;
-  downlink_interference_margin_db: number;
+  npr_db: number;
 }
 
 interface CniRequest {
@@ -107,19 +106,17 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
   // User 1
   const [u1Eirp, setU1Eirp] = useState(50.0);
   const [u1Gt, setU1Gt] = useState(20.0);
-  const [u1Impl, setU1Impl] = useState(1.0);
+  const [u1Npr, setU1Npr] = useState(25.0);
 
   // User 2
   const [u2Gt, setU2Gt] = useState(20.0);
-  const [u2Impl, setU2Impl] = useState(1.0);
 
   // Satellite RF
   const [satUplinkGt, setSatUplinkGt] = useState(15.0);
   const [satDownlinkEirp, setSatDownlinkEirp] = useState(52.0);
   const [uplinkImpl, setUplinkImpl] = useState(1.0);
   const [downlinkImpl, setDownlinkImpl] = useState(1.0);
-  const [uplinkIntMargin, setUplinkIntMargin] = useState(1.0);
-  const [downlinkIntMargin, setDownlinkIntMargin] = useState(1.0);
+  const [satNpr, setSatNpr] = useState(25.0);
 
   // Frequencies / BW
   const [uplinkFreq, setUplinkFreq] = useState(14.0);       // GHz
@@ -138,7 +135,6 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
   const applyPresetToUser1 = (preset: TerminalPreset) => {
     setU1Eirp(preset.eirp_dbw_op);
     setU1Gt(preset.gt_dbk_20deg);
-    setU1Impl(preset.impl_margin_db);
 
     // Set default freqs based on band
     if (preset.band === "Ka") {
@@ -155,7 +151,6 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
   const applyPresetToUser2 = (preset: TerminalPreset) => {
     // User 2 is receive-only in this simple bent-pipe model
     setU2Gt(preset.gt_dbk_20deg);
-    setU2Impl(preset.impl_margin_db);
   };
 
   const handleUser1PresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -235,7 +230,7 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
           },
           eirp_dbw: u1Eirp,
           gt_dbk: u1Gt,
-          impl_margin_db: u1Impl,
+          npr_db: u1Npr,
         },
         user2: {
           location: {
@@ -244,7 +239,7 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
           },
           eirp_dbw: 0.0, // user2 not transmitting in this bent-pipe model
           gt_dbk: u2Gt,
-          impl_margin_db: u2Impl,
+          npr_db: 100.0, // not used for RX-only
         },
         geometry: {
           satellite_longitude_deg: satLon,
@@ -254,8 +249,7 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
           downlink_eirp_dbw: satDownlinkEirp,
           uplink_impl_margin_db: uplinkImpl,
           downlink_impl_margin_db: downlinkImpl,
-          uplink_interference_margin_db: uplinkIntMargin,
-          downlink_interference_margin_db: downlinkIntMargin,
+          npr_db: satNpr,
         },
         freqs: {
           uplink_freq_ghz: uplinkFreq,
@@ -407,11 +401,11 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
               />
             </label>
             <label style={labelStyle}>
-              Impl. margin (dB):
+              NPR (dB):
               <input
                 type="number"
-                value={u1Impl}
-                onChange={(e) => setU1Impl(parseFloat(e.target.value))}
+                value={u1Npr}
+                onChange={(e) => setU1Npr(parseFloat(e.target.value))}
                 style={inputStyle}
               />
             </label>
@@ -594,30 +588,11 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
                 gap: "0.25rem",
               }}
             >
-              UL intf. (dB):
+              NPR (dB):
               <input
                 type="number"
-                value={uplinkIntMargin}
-                onChange={(e) => setUplinkIntMargin(parseFloat(e.target.value))}
-                style={{
-                  ...inputStyle,
-                  flex: "0 0 4rem",
-                  maxWidth: "4.25rem",
-                }}
-              />
-            </label>
-            <label
-              style={{
-                ...labelStyle,
-                flexWrap: "nowrap",
-                gap: "0.25rem",
-              }}
-            >
-              DL intf. (dB):
-              <input
-                type="number"
-                value={downlinkIntMargin}
-                onChange={(e) => setDownlinkIntMargin(parseFloat(e.target.value))}
+                value={satNpr}
+                onChange={(e) => setSatNpr(parseFloat(e.target.value))}
                 style={{
                   ...inputStyle,
                   flex: "0 0 4rem",
@@ -683,15 +658,6 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
                 type="number"
                 value={u2Gt}
                 onChange={(e) => setU2Gt(parseFloat(e.target.value))}
-                style={inputStyle}
-              />
-            </label>
-            <label style={labelStyle}>
-              Impl. margin (dB):
-              <input
-                type="number"
-                value={u2Impl}
-                onChange={(e) => setU2Impl(parseFloat(e.target.value))}
                 style={inputStyle}
               />
             </label>
