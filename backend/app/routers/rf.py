@@ -18,9 +18,9 @@ class GroundTerminal(BaseModel):
     location: Location
     eirp_dbw: float = Field(..., description="Uplink EIRP toward satellite (dBW)")
     gt_dbk: float = Field(..., description="Downlink G/T of the ground terminal (dB/K)")
-    impl_margin_db: float = Field(
-        0.0,
-        description="Implementation / misc margin to subtract from C/N (dB) on this terminal"
+    npr_db: float = Field(
+        100.0,
+        description="Noise Power Ratio (dB) for interference/intermod (treated as C/I)"
     )
 
 
@@ -54,19 +54,9 @@ class SatelliteRF(BaseModel):
     downlink_impl_margin_db: float = Field(
         0.0, description="Additional downlink implementation margin (dB)"
     )
-    uplink_interference_margin_db: float = Field(
-        0.0,
-        description=(
-            "Extra margin to account for uplink interference, OBO, intermod, adjacent satellites, etc. "
-            "Subtracted from uplink C/N in dB."
-        ),
-    )
-    downlink_interference_margin_db: float = Field(
-        0.0,
-        description=(
-            "Extra margin to account for downlink interference, OBO, etc. "
-            "Subtracted from downlink C/N in dB."
-        ),
+    npr_db: float = Field(
+        100.0,
+        description="Satellite NPR (dB) contributing to downlink C/I"
     )
 
 
@@ -256,7 +246,7 @@ async def compute_cni(req: CniRequest) -> CniResponse:
 
     # --- Uplink C/N0 and C/(N+I) ---
 
-    uplink_extra_losses = req.user1.impl_margin_db + req.rf.uplink_impl_margin_db
+    uplink_extra_losses = req.rf.uplink_impl_margin_db
 
     cn0_uplink_dbhz = cn0_dbhz_from_eirp_gt(
         eirp_dbw=req.user1.eirp_dbw,
@@ -267,11 +257,12 @@ async def compute_cni(req: CniRequest) -> CniResponse:
     cn_uplink_db = cn_db_from_cn0(cn0_uplink_dbhz, req.freqs.noise_bandwidth_hz)
 
     # Apply interference / OBO margin on uplink
-    cni_uplink_db = cn_uplink_db - req.rf.uplink_interference_margin_db
+    # Treat User 1 NPR as uplink C/I
+    cni_uplink_db = combine_cn_linear(cn_uplink_db, req.user1.npr_db)
 
     # --- Downlink C/N0 and C/(N+I) ---
 
-    downlink_extra_losses = req.user2.impl_margin_db + req.rf.downlink_impl_margin_db
+    downlink_extra_losses = req.rf.downlink_impl_margin_db
 
     cn0_downlink_dbhz = cn0_dbhz_from_eirp_gt(
         eirp_dbw=req.rf.downlink_eirp_dbw,
@@ -281,7 +272,8 @@ async def compute_cni(req: CniRequest) -> CniResponse:
     )
     cn_downlink_db = cn_db_from_cn0(cn0_downlink_dbhz, req.freqs.noise_bandwidth_hz)
 
-    cni_downlink_db = cn_downlink_db - req.rf.downlink_interference_margin_db
+    # Treat Satellite RF NPR as downlink C/I
+    cni_downlink_db = combine_cn_linear(cn_downlink_db, req.rf.npr_db)
 
     # --- End-to-end C/(N+I) ---
 
