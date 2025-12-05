@@ -88,4 +88,37 @@ export const TERMINAL_PRESETS: TerminalPreset[] = [
     impl_margin_db: 1.0,
     notes: "Representative large Ka-band hub terminal.",
   },
+
+  // ---------- Airborne ----------
+
+  {
+    id: "airborne-18in-ka",
+    label: "Airborne 18-inch Ka-band (USAF)",
+    band: "Ka",
+    eirp_dbw_op: 52, // Typical for ~46cm airborne terminal (e.g. Viasat GAT-5518 class)
+    gt_dbk_20deg: 14, // ~13-15 dB/K
+    impl_margin_db: 1.5, // Higher margin for radome loss
+    notes: "Representative USAF airborne terminal (e.g. C-130/UAV), ~18in/46cm dish.",
+  },
+
+  // ---------- Gateways (Commercial / Teleport) ----------
+
+  {
+    id: "gateway-7m-x",
+    label: "Commercial Gateway 7.3m X-band",
+    band: "X",
+    eirp_dbw_op: 80, // Large HPA + high gain
+    gt_dbk_20deg: 33, // ~33-35 dB/K typical for 7.3m
+    impl_margin_db: 0.5, // Fixed station, well calibrated
+    notes: "Large fixed commercial X-band gateway (Teleport class, ~7.3m).",
+  },
+  {
+    id: "gateway-7m-ka",
+    label: "Commercial Gateway 7.3m Ka-band",
+    band: "Ka",
+    eirp_dbw_op: 85, // High power gateway
+    gt_dbk_20deg: 38, // ~37-40 dB/K typical for 7.3m
+    impl_margin_db: 0.5,
+    notes: "Large fixed commercial Ka-band gateway (Teleport class, ~7.3m).",
+  },
 ];
