@@ -1,5 +1,5 @@
-from math import radians, cos, sqrt, log10
-from typing import List, Optional
+from math import radians, cos, sin, sqrt, log10
+from typing import List, Optional, Tuple
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
@@ -27,6 +27,9 @@ class GroundTerminal(BaseModel):
 class LinkGeometry(BaseModel):
     satellite_longitude_deg: float = Field(
         ..., description="GEO satellite longitude in degrees East (sat at equator)"
+    )
+    beam_center: Location = Field(
+        ..., description="Center of the satellite beam"
     )
 
 
@@ -88,6 +91,8 @@ class CniResponse(BaseModel):
     uplink_cn0_dbhz: float
     downlink_cn0_dbhz: float
     suggested_modcod: Optional[ModcodInfo]
+    user1_uv: List[float] = Field(..., description="[u, v] for user 1 relative to beam center")
+    user2_uv: List[float] = Field(..., description="[u, v] for user 2 relative to beam center")
 
 
 # DVB-S2 MODCOD ideal Es/N0 thresholds in AWGN (FECFRAME 64800, no pilots).
@@ -214,6 +219,64 @@ def pick_best_modcod(
     return best
 
 
+def calculate_uv(
+    sat_lon_deg: float,
+    ground_lat_deg: float,
+    ground_lon_deg: float,
+    re_km: float = 6378.0,
+    rs_km: float = 42164.0,
+) -> Tuple[float, float]:
+    """
+    Calculate (u, v) direction cosines for a ground point relative to the satellite.
+    
+    Frame definition:
+      - Origin: Satellite
+      - Z-axis (Boresight): Towards Earth Center (Nadir)
+      - U-axis: North (0, 0, 1)
+      - V-axis: East (tangential to orbit)
+      
+    Returns (u, v).
+    """
+    # Convert to radians
+    lam_s = radians(sat_lon_deg)
+    phi_g = radians(ground_lat_deg)
+    lam_g = radians(ground_lon_deg)
+    
+    # Satellite position (ECEF)
+    # Assuming equatorial orbit
+    xs = rs_km * cos(lam_s)
+    ys = rs_km * sin(lam_s)
+    zs = 0.0
+    
+    # Ground position (ECEF)
+    xg = re_km * cos(phi_g) * cos(lam_g)
+    yg = re_km * cos(phi_g) * sin(lam_g)
+    zg = re_km * sin(phi_g)
+    
+    # Vector from Sat to Ground
+    rx = xg - xs
+    ry = yg - ys
+    rz = zg - zs
+    dist = sqrt(rx*rx + ry*ry + rz*rz)
+    
+    # Basis vectors for Sat frame (in ECEF)
+    # Z (nadir) = -Sat / |Sat| = (-cos(lam_s), -sin(lam_s), 0)
+    # U (North) = (0, 0, 1)
+    # V (East)  = (-sin(lam_s), cos(lam_s), 0)
+    
+    ux, uy, uz = 0.0, 0.0, 1.0
+    vx, vy, vz = -sin(lam_s), cos(lam_s), 0.0
+    
+    # Project R onto U and V
+    # u = (R . U) / |R|
+    # v = (R . V) / |R|
+    
+    u_val = (rx*ux + ry*uy + rz*uz) / dist
+    v_val = (rx*vx + ry*vy + rz*vz) / dist
+    
+    return u_val, v_val
+
+
 # ---------- Endpoint ----------
 
 @router.post("/cni", response_model=CniResponse)
@@ -243,6 +306,33 @@ async def compute_cni(req: CniRequest) -> CniResponse:
 
     fspl_uplink_db = fspl_db(d_uplink_km, req.freqs.uplink_freq_ghz)
     fspl_downlink_db = fspl_db(d_downlink_km, req.freqs.downlink_freq_ghz)
+    
+    # --- UV Coordinates ---
+    
+    # Calculate UV for beam center
+    uc, vc = calculate_uv(
+        req.geometry.satellite_longitude_deg,
+        req.geometry.beam_center.latitude_deg,
+        req.geometry.beam_center.longitude_deg
+    )
+    
+    # Calculate UV for user 1 (uplink)
+    u1, v1 = calculate_uv(
+        req.geometry.satellite_longitude_deg,
+        req.user1.location.latitude_deg,
+        req.user1.location.longitude_deg
+    )
+    
+    # Calculate UV for user 2 (downlink)
+    u2, v2 = calculate_uv(
+        req.geometry.satellite_longitude_deg,
+        req.user2.location.latitude_deg,
+        req.user2.location.longitude_deg
+    )
+    
+    # Relative UV
+    user1_rel_uv = [u1 - uc, v1 - vc]
+    user2_rel_uv = [u2 - uc, v2 - vc]
 
     # --- Uplink C/N0 and C/(N+I) ---
 
@@ -290,4 +380,6 @@ async def compute_cni(req: CniRequest) -> CniResponse:
         uplink_cn0_dbhz=cn0_uplink_dbhz,
         downlink_cn0_dbhz=cn0_downlink_dbhz,
         suggested_modcod=best_modcod,
+        user1_uv=user1_rel_uv,
+        user2_uv=user2_rel_uv,
     )

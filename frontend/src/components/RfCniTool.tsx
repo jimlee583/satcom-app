@@ -18,6 +18,7 @@ interface GroundTerminal {
 
 interface LinkGeometry {
   satellite_longitude_deg: number;
+  beam_center: Location;
 }
 
 interface LinkFrequencies {
@@ -56,6 +57,8 @@ interface CniResponse {
   uplink_cn0_dbhz: number;
   downlink_cn0_dbhz: number;
   suggested_modcod: ModcodInfo | null;
+  user1_uv: [number, number];
+  user2_uv: [number, number];
 }
 
 interface RfCniToolProps {
@@ -243,6 +246,10 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
         },
         geometry: {
           satellite_longitude_deg: satLon,
+          beam_center: {
+            latitude_deg: beamCenter.latitude_deg,
+            longitude_deg: beamCenter.longitude_deg,
+          },
         },
         rf: {
           uplink_gt_dbk: satUplinkGt,
@@ -802,6 +809,22 @@ export const RfCniTool: React.FC<RfCniToolProps> = ({
                 </td>
                 <td style={{ padding: "0.25rem 0.5rem", textAlign: "right" }}>
                   {result.total_cni_db.toFixed(2)}
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: "0.25rem 0.5rem", opacity: 0.8 }}>
+                  Uplink U, V
+                </td>
+                <td style={{ padding: "0.25rem 0.5rem", textAlign: "right" }}>
+                  {result.user1_uv[0].toFixed(4)}, {result.user1_uv[1].toFixed(4)}
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: "0.25rem 0.5rem", opacity: 0.8 }}>
+                  Downlink U, V
+                </td>
+                <td style={{ padding: "0.25rem 0.5rem", textAlign: "right" }}>
+                  {result.user2_uv[0].toFixed(4)}, {result.user2_uv[1].toFixed(4)}
                 </td>
               </tr>
             </tbody>
