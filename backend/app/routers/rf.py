@@ -232,8 +232,8 @@ def calculate_uv(
     Frame definition:
       - Origin: Satellite
       - Z-axis (Boresight): Towards Earth Center (Nadir)
-      - U-axis: North (0, 0, 1)
-      - V-axis: East (tangential to orbit)
+      - U-axis: East (tangential to orbit)
+      - V-axis: North (0, 0, 1)
       
     Returns (u, v).
     """
@@ -261,11 +261,11 @@ def calculate_uv(
     
     # Basis vectors for Sat frame (in ECEF)
     # Z (nadir) = -Sat / |Sat| = (-cos(lam_s), -sin(lam_s), 0)
-    # U (North) = (0, 0, 1)
-    # V (East)  = (-sin(lam_s), cos(lam_s), 0)
+    # U (East)  = (-sin(lam_s), cos(lam_s), 0)
+    # V (North) = (0, 0, 1)
     
-    ux, uy, uz = 0.0, 0.0, 1.0
-    vx, vy, vz = -sin(lam_s), cos(lam_s), 0.0
+    ux, uy, uz = -sin(lam_s), cos(lam_s), 0.0
+    vx, vy, vz = 0.0, 0.0, 1.0
     
     # Project R onto U and V
     # u = (R . U) / |R|
